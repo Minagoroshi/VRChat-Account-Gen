@@ -4,6 +4,7 @@ This application is only to be used for educational purposes and with your own a
 
 ## Current Features
  - Dynamic Console Menu
+ - Proxy Support
 
 ## Planned Features
  - Auto Email Verification (Either through email automation, or vrc-api exploit should another one come up)
