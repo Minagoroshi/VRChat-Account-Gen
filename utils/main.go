@@ -50,9 +50,7 @@ func Startup() {
 	} else {
 		color.Red.Println("Config not found, creating it")
 		cfg := &UserConfig{
-			Login:      "",
 			CaptchaKey: "",
-			RememberMe: false,
 		}
 		data, _ := json.Marshal(cfg)
 		err := os.WriteFile("config.json", data, 0755)

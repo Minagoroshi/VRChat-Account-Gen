@@ -28,7 +28,7 @@ var (
 func main() {
 	//Startup
 	var key string
-
+	utils.Startup()
 	//Menu Prompts
 	_, _ = utils.SetConsoleTitle("VRChat Account Generator GO by top#2222")
 	reader := bufio.NewReader(os.Stdin)

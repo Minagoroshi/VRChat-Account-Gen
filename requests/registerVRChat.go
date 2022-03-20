@@ -47,7 +47,6 @@ Start:
 		}
 		goto Start
 	}
-	utils.SecurityCheck()
 	color.Yellow.Println(utils.TimeStamp(), "Worker", worker, "| Submitting Captcha")
 	res, err := client.Do(req)
 	if err != nil {
@@ -78,7 +77,6 @@ Start:
 		}
 		goto Start
 	}
-	utils.SecurityCheck()
 	color.HiBlue.Println(utils.TimeStamp(), "Worker", worker, "| Getting Solution")
 	res, err = client.Do(getSolution)
 	if err != nil {
@@ -151,7 +149,6 @@ Start:
 			req.Header.Add("Origin", "https://vrchat.com")
 			req.Header.Add("Referer", "https://vrchat.com/home/register")
 			pink.Println(utils.TimeStamp(), "Worker", worker, "| Registering Account")
-			utils.SecurityCheck()
 			res, err = client.Do(req)
 			if err != nil {
 				if proxy != nil {
