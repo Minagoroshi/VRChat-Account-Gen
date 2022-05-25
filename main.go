@@ -156,7 +156,7 @@ func WorkerFunc() {
 			WorkerLog("success", worker, fmt.Sprintf("Username: %s | Password: %s | Email: %s", username, password, email))
 		} else {
 			fails++
-			WorkerLog("failure", worker, fmt.Sprintf("Failed to register account"))
+			WorkerLog("failure", worker, "Failed to register account")
 		}
 
 	}

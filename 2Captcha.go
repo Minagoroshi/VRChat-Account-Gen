@@ -35,11 +35,12 @@ func SolveHCaptcha(worker int) string {
 
 			if code == nil {
 				WorkerLog("info", worker, "Waiting for captcha to be solved")
+			} else {
+				ready = true
+
+				return *code
 			}
 
-			ready = true
-
-			return *code
 		}
 
 	} else {
