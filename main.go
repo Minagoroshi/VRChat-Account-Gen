@@ -4,13 +4,12 @@ package main
 
 import (
 	"VRChat_Account_Generator/Shared"
-	"VRChat_Account_Generator/requests"
-	"VRChat_Account_Generator/utils"
 	"bufio"
+	"encoding/json"
 	"fmt"
-	"github.com/buger/jsonparser"
 	"github.com/gookit/color"
 	"github.com/gosuri/uilive"
+	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
@@ -26,11 +25,10 @@ var (
 )
 
 func main() {
-	//Startup
-	var key string
-	utils.Startup()
+
+	LoadConfig()
 	//Menu Prompts
-	_, _ = utils.SetConsoleTitle("VRChat Account Generator GO by top#2222")
+	_, _ = SetConsoleTitle("VRChat Account Generator GO")
 	reader := bufio.NewReader(os.Stdin)
 
 	x := 1
@@ -42,7 +40,7 @@ func main() {
 		" 4.", Blue("Socks5 \n"),
 		" 5.", Blue("Proxyless (Don't use unless testing)"))
 	pType, err := reader.ReadString('\n')
-	utils.Clr()
+	Clr()
 	pType = strings.ReplaceAll(strings.ReplaceAll(pType, "\n", ""), "\r", "")
 	if len(pType) > 0 {
 		x, err = strconv.Atoi(pType)
@@ -54,6 +52,8 @@ func main() {
 			x = 1
 		}
 	}
+
+	/// Load Proxies
 	pCount := 0
 	if x != 5 {
 		pCount, err = Shared.PManager.LoadFromFile("proxies.txt", x-1)
@@ -62,19 +62,18 @@ func main() {
 		}
 		color.Success.Println("Loaded", pCount, "proxies")
 	}
+
 	//Key Check
-	cfg := utils.ReadConfig()
-	if cfg.CaptchaKey != "" {
-		key = cfg.CaptchaKey
-	} else {
-		utils.KeyPrompt()
-		utils.ReadConfig()
-		key = cfg.CaptchaKey
+	cfg := ReadConfig()
+	if cfg.CaptchaKey == "" {
+		KeyPrompt()
+		ReadConfig()
 	}
+
 	//Bot Prompt
 	color.FgLightCyan.Print(fmt.Sprintf("Number of bots? [Default: %d] [Max: 200]: ", Shared.BotCount))
 	e, err := reader.ReadString('\n')
-	utils.Clr()
+	Clr()
 	e = strings.ReplaceAll(strings.ReplaceAll(e, "\n", ""), "\r", "")
 	if len(e) > 0 {
 		Shared.BotCount, err = strconv.Atoi(e)
@@ -90,12 +89,14 @@ func main() {
 			Shared.BotCount = 200
 		}
 	}
+
+	// Setup Output File
 	t := time.Now()
-	//Make Output File
 	Shared.OutFile, err = os.Create("Output\\" + t.Format("2006-01-02_15-04-05"+".txt"))
 	defer func(OutFile *os.File) {
 		_ = OutFile.Close()
 	}(Shared.OutFile)
+
 	//Start Workers
 	Shared.Semaphore = make(chan int, Shared.BotCount)
 	Shared.Worker = make(chan int, Shared.BotCount)
@@ -104,9 +105,10 @@ func main() {
 	for i := 0; i < Shared.BotCount; i++ {
 		Shared.Worker <- i
 		Shared.Semaphore <- 0
-		go WorkerFunc(key)
+		go WorkerFunc()
 
 	}
+
 	//Title Update
 	go func() {
 		var writer *uilive.Writer
@@ -117,7 +119,7 @@ func main() {
 		}
 		for len(Shared.Semaphore) > 0 {
 			if runtime.GOOS == "windows" {
-				_, _ = utils.SetConsoleTitle(fmt.Sprintf("VRChat Generator GO | Proxies %d | Accounts Made %d | Fails %d | Bots %d", pCount, successes, fails, len(Shared.Semaphore)))
+				_, _ = SetConsoleTitle(fmt.Sprintf("VRChat Generator GO | Proxies %d | Accounts Made %d | Fails %d | Bots %d", pCount, successes, fails, len(Shared.Semaphore)))
 			} else {
 				_, _ = fmt.Fprintf(writer, "\t Accounts Made %d | fails %d  Bots %d\r\n", successes, fails, len(Shared.Semaphore))
 			}
@@ -131,27 +133,31 @@ func main() {
 	select {}
 }
 
-func WorkerFunc(key string) {
+func WorkerFunc() {
 	worker := <-Shared.Worker
 	//Start Worker Loop
 	for {
+
 		//Register
-		proxy, statusCode, body, username, password, email := requests.Register(key, worker)
-		//Parse Response
-		if strings.Contains(body, "currentAvatar") {
+		WorkerLog("debug", worker, "Attempting to register an account")
+		res, username, password, email := RegisterVRC(worker)
+
+		//Read res.Body into a string
+		body, _ := ioutil.ReadAll(res.Body)
+
+		//Unmarshal the body into a struct
+		var responseBody RegistrationResponse
+		err := json.Unmarshal(body, &responseBody)
+		if err != nil {
+			WorkerLog("error", worker, "Failed to unmarshal response body")
+		}
+		if responseBody.CurrentAvatar != "" {
 			successes++
-			color.Success.Println(utils.TimeStamp(), "Worker", worker, "| Success! |  Email : ", email, " | Username : ", username, " | Password : ", password, "| Status Code:", statusCode, "| Proxy:", proxy)
-			_, err := Shared.OutFile.WriteString(username + ":" + password + "\n")
-			if err != nil {
-				return
-			}
+			WorkerLog("success", worker, fmt.Sprintf("Username: %s | Password: %s | Email: %s", username, password, email))
 		} else {
 			fails++
-			message, _ := jsonparser.GetString([]byte(body), "error", "message")
-			if message == "" {
-				message = "None"
-			}
-			color.Error.Println(utils.TimeStamp(), "Worker", worker, "| Failed! | Message:", message, "| Status Code:", statusCode, "| Proxy:", proxy)
+			WorkerLog("failure", worker, fmt.Sprintf("Failed to register account"))
 		}
+
 	}
 }

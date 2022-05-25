@@ -1,16 +1,17 @@
-package utils
+package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gookit/color"
+	"math/rand"
 	"os"
 	"os/exec"
-	"strconv"
 	"syscall"
-	"time"
 	"unsafe"
 )
 
+// SetConsoleTitle sets the console title
 func SetConsoleTitle(title string) (int, error) {
 	handle, err := syscall.LoadLibrary("Kernel32.dll")
 	if err != nil {
@@ -26,13 +27,16 @@ func SetConsoleTitle(title string) (int, error) {
 	r, _, err := syscall.Syscall(proc, 1, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))), 0, 0)
 	return int(r), err
 }
+
+// Clr clears the console
 func Clr() {
 	cmd := exec.Command("cmd", "/c", "cls")
 	cmd.Stdout = os.Stdout
 	_ = cmd.Run()
 }
 
-func Startup() {
+// LoadConfig loads the config file and the output directory
+func LoadConfig() {
 
 	//Check if output directory exists
 	if stat, err := os.Stat("./Output"); err == nil && stat.IsDir() {
@@ -64,11 +68,32 @@ func Startup() {
 
 }
 
-//TimeStamp takes the current time, and converts it to the format of [hh:mm:ss]
-func TimeStamp() string {
-	now := time.Now()
-	h, m, s := now.Hour(), now.Minute(), now.Second()
-	hour, min, sec := strconv.Itoa(h), strconv.Itoa(m), strconv.Itoa(s)
-	timeStamp := "[" + hour + ":" + min + ":" + sec + "]"
-	return timeStamp
+// Scanln is similar to Scan, but stops scanning at a newline and
+// after the final item there must be a newline or EOF.
+func Scanln(a ...interface{}) (n int, err error) {
+	return fmt.Fscanln(os.Stdin, a...)
+}
+
+func KeyPrompt() {
+	var key string
+	fmt.Println("Input 2Captcha Key...")
+	_, err := Scanln(&key)
+	if err != nil {
+		return
+	}
+	userConfig := &UserConfig{
+		CaptchaKey: key,
+	}
+
+	data, _ := json.Marshal(userConfig)
+	err = os.WriteFile("config.json", data, 0755)
+	if err != nil {
+		return
+	}
+
+}
+
+//randInt generates a random integer between min and max
+func randInt(min int, max int) int {
+	return min + rand.Intn(max-min)
 }
